@@ -505,6 +505,38 @@ public class SAMRecord implements Cloneable, Locatable, Serializable {
     }
 
     /**
+     * @param rec record to use
+     * @param pos 1-based reference position
+     * @return 1-based inclusive offset position into the unclipped sequence at a given reference position,
+     * or 0 if there is no such offset.
+     * For example, given the sequence NNNAAACCCGGG, cigar 3S9M, and an alignment start of 1,
+     * and a (1-based)pos of 7 (start of GGG) it returns 10 (1-based offset including the soft clip.
+     * For example: given the sequence AAACCCGGGTTT, cigar 4M1D6M, an alignment start of 1,
+     * a reference position of 4 returns offset of 4, a reference of 5 returns an offset 0 (no offset for the deleted base).
+     * Another example: given the sequence AAACCCGGGTTT, cigar 4M1I6M, an alignment start of 1,
+     * a position 4 returns an offset 4, a position of 5 returns 6 (the inserted base is the 5th offset).
+     */
+    public static int getOffsetAtReferencePosition(SAMRecord rec, final int pos) {
+
+        int offset = 0;
+
+        if (pos != 0) {
+            for (final AlignmentBlock alignmentBlock : rec.getAlignmentBlocks()) {
+                if (CoordMath.getEnd(alignmentBlock.getReferenceStart(), alignmentBlock.getLength()) >= pos) {
+                    if (pos < alignmentBlock.getReferenceStart()) {
+                        break;
+                    } else {
+                        offset = pos - alignmentBlock.getReferenceStart() + alignmentBlock.getReadStart();
+                        break;
+                    }
+                }
+            }
+        }
+        return offset;
+    }
+
+
+    /**
      * @return 1-based inclusive leftmost position of the clipped mate sequence, or 0 if there is no position.
      */
     public int getMateAlignmentStart() {
