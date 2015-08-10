@@ -52,6 +52,7 @@ import java.util.Arrays;
  * A collection of methods to open and close CRAM files.
  */
 public class CramIO {
+    public static final String CRAM_FILE_EXTENSION = ".cram";
     /**
      * The 'zero-B' EOF marker as per CRAM specs v2.1. This is basically a serialized empty CRAM container with sequence id set to some
      * number to spell out 'EOF' in hex.

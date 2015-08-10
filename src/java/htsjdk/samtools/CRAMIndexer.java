@@ -46,7 +46,6 @@ import htsjdk.samtools.cram.structure.Slice;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedFilePointerUtil;
 import htsjdk.samtools.util.Log;
-import org.testng.Assert;
 
 import java.io.File;
 import java.io.IOException;
@@ -408,7 +407,7 @@ public class CRAMIndexer {
                 }
 
             } catch (final IOException e) {
-                Assert.fail("Failed to read cram container", e);
+                throw new RuntimeException("Failed to read cram container", e);
             }
 
         } while (!container.isEOF());
