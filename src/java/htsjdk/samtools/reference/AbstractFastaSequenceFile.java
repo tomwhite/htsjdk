@@ -70,6 +70,9 @@ abstract class AbstractFastaSequenceFile implements ReferenceSequenceFile {
     }
 
     protected static File findSequenceDictionary(final File file) {
+        if (file == null) {
+            return null;
+        }
         // Try and locate the dictionary
         String dictionaryName = file.getAbsolutePath();
         String dictionaryNameExt = file.getAbsolutePath();

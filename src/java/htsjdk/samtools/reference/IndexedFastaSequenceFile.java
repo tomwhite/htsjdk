@@ -37,6 +37,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Iterator;
 
 /**
@@ -47,7 +50,7 @@ public class IndexedFastaSequenceFile extends AbstractFastaSequenceFile implemen
     /**
      * The interface facilitating direct access to the fasta.
      */
-    private final FileChannel channel;
+    private final SeekableByteChannel channel;
 
     /**
      * A representation of the sequence index, stored alongside the fasta in a .fasta.fai file.
@@ -77,6 +80,21 @@ public class IndexedFastaSequenceFile extends AbstractFastaSequenceFile implemen
             throw new SAMException("Fasta file should be readable but is not: " + file, e);
         }
         channel = in.getChannel();
+        reset();
+
+        if(getSequenceDictionary() != null)
+            sanityCheckDictionaryAgainstIndex(file.getAbsolutePath(),sequenceDictionary,index);
+    }
+
+    public IndexedFastaSequenceFile(final Path file, final FastaSequenceIndex index) throws IOException {
+        this(Files.newByteChannel(file), index);
+    }
+
+    public IndexedFastaSequenceFile(final SeekableByteChannel channel, final FastaSequenceIndex index) {
+        super(null);
+        this.channel = channel;
+        if (index == null) throw new IllegalArgumentException("Null index for fasta " + file);
+        this.index = index;
         reset();
 
         if(getSequenceDictionary() != null)
@@ -202,7 +220,17 @@ public class IndexedFastaSequenceFile extends AbstractFastaSequenceFile implemen
             startOffset += Math.max((int)(startOffset%bytesPerLine - basesPerLine + 1),0);
 
             try {
-                 startOffset += channel.read(channelBuffer,indexEntry.getLocation()+startOffset);
+                if (channel instanceof FileChannel) {
+                    startOffset += ((FileChannel) channel).read(channelBuffer,indexEntry.getLocation()+startOffset);
+                } else {
+                    long oldPos = channel.position();
+                    try {
+                        channel.position(indexEntry.getLocation()+startOffset);
+                        startOffset += channel.read(channelBuffer);
+                    } finally {
+                        channel.position(oldPos);
+                    }
+                }
             }
             catch(IOException ex) {
                 throw new SAMException("Unable to load " + contig + "(" + start + ", " + stop + ") from " + file);

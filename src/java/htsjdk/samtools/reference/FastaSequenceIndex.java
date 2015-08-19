@@ -30,6 +30,7 @@ import htsjdk.samtools.util.IOUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -53,6 +54,14 @@ public class FastaSequenceIndex implements Iterable<FastaSequenceIndexEntry> {
     public FastaSequenceIndex( File indexFile ) {
         IOUtil.assertFileIsReadable(indexFile);
         parseIndexFile(indexFile);
+    }
+
+    /**
+     * Build a sequence index from the specified input stream.
+     * @param in InputStream to read from.
+     */
+    public FastaSequenceIndex( InputStream in ) {
+        parseIndexFile(new Scanner(in));
     }
 
     /**
@@ -115,36 +124,42 @@ public class FastaSequenceIndex implements Iterable<FastaSequenceIndexEntry> {
      */
     private void parseIndexFile(File indexFile) {
         try {
-            Scanner scanner = new Scanner(indexFile);
-
-            int sequenceIndex = 0;
-            while( scanner.hasNext() ) {
-                // Tokenize and validate the index line.
-                String result = scanner.findInLine("(.+)\\t+(\\d+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d+)");
-                if( result == null )
-                    throw new SAMException("Found invalid line in index file:" + scanner.nextLine());
-                MatchResult tokens = scanner.match();
-                if( tokens.groupCount() != 5 )
-                    throw new SAMException("Found invalid line in index file:" + scanner.nextLine());
-
-                // Skip past the line separator
-                scanner.nextLine();
-
-                // Parse the index line.
-                String contig = tokens.group(1);
-                long size = Long.valueOf(tokens.group(2));
-                long location = Long.valueOf(tokens.group(3));
-                int basesPerLine = Integer.valueOf(tokens.group(4));
-                int bytesPerLine = Integer.valueOf(tokens.group(5));
-
-                contig = SAMSequenceRecord.truncateSequenceName(contig);
-                // Build sequence structure
-                add(new FastaSequenceIndexEntry(contig,location,size,basesPerLine,bytesPerLine, sequenceIndex++) );
-            }
-            scanner.close();
+            parseIndexFile(new Scanner(indexFile));
         } catch (FileNotFoundException e) {
             throw new SAMException("Fasta index file should be found but is not: " + indexFile, e);
         }
+    }
+
+    /**
+     * Parse the contents of an index file, caching the results internally.
+     * @param scanner Scanner to read from.
+     */
+    private void parseIndexFile(Scanner scanner) {
+        int sequenceIndex = 0;
+        while( scanner.hasNext() ) {
+            // Tokenize and validate the index line.
+            String result = scanner.findInLine("(.+)\\t+(\\d+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d+)");
+            if( result == null )
+                throw new SAMException("Found invalid line in index file:" + scanner.nextLine());
+            MatchResult tokens = scanner.match();
+            if( tokens.groupCount() != 5 )
+                throw new SAMException("Found invalid line in index file:" + scanner.nextLine());
+
+            // Skip past the line separator
+            scanner.nextLine();
+
+            // Parse the index line.
+            String contig = tokens.group(1);
+            long size = Long.valueOf(tokens.group(2));
+            long location = Long.valueOf(tokens.group(3));
+            int basesPerLine = Integer.valueOf(tokens.group(4));
+            int bytesPerLine = Integer.valueOf(tokens.group(5));
+
+            contig = SAMSequenceRecord.truncateSequenceName(contig);
+            // Build sequence structure
+            add(new FastaSequenceIndexEntry(contig,location,size,basesPerLine,bytesPerLine, sequenceIndex++) );
+        }
+        scanner.close();
     }
 
     /**
