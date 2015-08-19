@@ -508,26 +508,36 @@ public class SAMRecord implements Cloneable, Locatable, Serializable {
         return 0; // offset not located in an alignment block
     }
 
-    public int getOffsetAtReferencePosition(final int pos) {
-        return getOffsetAtReferencePosition(this, pos);
+
+    //This version will return 0 if corresponding base in read was deleted.
+    public int getReadPositionAtReferencePosition(final int pos) {
+        return getReadPositionAtReferencePosition(this, pos, false);
+    }
+
+    public int getReadPositionAtReferencePosition(final int pos, boolean returnLastBaseIfDeleted) {
+        return getReadPositionAtReferencePosition(this, pos, returnLastBaseIfDeleted);
     }
 
     /**
      * @param rec record to use
      * @param pos 1-based reference position
-     * @return 1-based (to match getReferencePositionAtReadPosition behavior) inclusive offset position into the
+     * @param returnLastBaseIfDeleted if positive, and reference position matches a deleted base in the read, function will
+     * return the offset
+     * @return 1-based (to match getReferencePositionAtReadPosition behavior) inclusive position into the
      * unclipped sequence at a given reference position,
-     * or 0 if there is no such offset. Deletions are assumed to "live" on the last read base in the previous block.
+     * or 0 if there is no such position. If returnLastBaseIfDeleted is true deletions are assumed to "live" on the last read base
+     * in the preceding block.
      * For example, given the sequence NNNAAACCCGGG, cigar 3S9M, and an alignment start of 1,
      * and a (1-based)pos of 7 (start of GGG) it returns 10 (1-based offset including the soft clip.
      * For example: given the sequence AAACCCGGGT, cigar 4M1D6M, an alignment start of 1,
-     * a reference position of 4 returns offset of 4, a reference of 5 also returns an offset 4 (using "left aligning").
+     * a reference position of 4 returns offset of 4, a reference of 5 also returns an offset 4 (using "left aligning") if returnLastBaseIfDeleted
+     * and 0 otherwise.
      * For example: given the sequence AAACtCGGGTT, cigar 4M1I6M, an alignment start of 1,
      * a position 4 returns an offset 5, a position of 5 returns 6 (the inserted base is the 5th offset), a position of 11 returns 0 since
      * that position in the reference doesn't overlap the read at all.
      *
      */
-    public static int getOffsetAtReferencePosition(SAMRecord rec, final int pos) {
+    public static int getReadPositionAtReferencePosition(SAMRecord rec, final int pos, final boolean returnLastBaseIfDeleted) {
 
         int lastAlignmentOffset = 0;
 
@@ -538,7 +548,7 @@ public class SAMRecord implements Cloneable, Locatable, Serializable {
             if (CoordMath.getEnd(alignmentBlock.getReferenceStart(), alignmentBlock.getLength()) >= pos) {
                 if (pos < alignmentBlock.getReferenceStart()) {
                     //There must have been a deletion block that skipped
-                    return lastAlignmentOffset;
+                    return returnLastBaseIfDeleted ? lastAlignmentOffset : 0;
                 } else {
                     return  pos - alignmentBlock.getReferenceStart() + alignmentBlock.getReadStart() ;
                 }
