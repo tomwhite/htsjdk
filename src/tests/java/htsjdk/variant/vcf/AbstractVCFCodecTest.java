@@ -1,5 +1,7 @@
 package htsjdk.variant.vcf;
 
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.Iterables;
 import java.io.File;
 import java.util.List;
 
@@ -33,5 +35,11 @@ public class AbstractVCFCodecTest extends VariantBaseTest {
 	@Test(expectedExceptions = TribbleException.class)
 	public void TestSpanDelParseAllelesException(){
 		List<Allele> list1 = VCF3Codec.parseAlleles(Allele.SPAN_DEL_STRING, "A", 0);
+	}
+
+	@Test
+	public void testParseUncompressedBcf(){
+		VCFFileReader reader = new VCFFileReader(new File(VariantBaseTest.variantTestDataRoot + "ex2.uncompressed.bcf"), false);
+		Assert.assertTrue(Iterables.slurp(reader.iterator()).size() > 0);
 	}
 }
